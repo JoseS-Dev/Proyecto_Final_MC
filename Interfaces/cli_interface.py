@@ -72,7 +72,7 @@ class CliInterface:
             if(result):
                 print(f"\n {method.upper()}:")
                 print(f" Punto óptimo: {result.get('optimal_point', 'N/A')}")
-                print(f" Valor óptimo: {result.get('optimal_value', 'N/A'):.6f}")
+                print(f" Valor óptimo: {result.get('optimal_value'):.6f}")
                 print(f" Iteraciones: {result.get('iterations', 'N/A')}")
                 print(f" Tiempo: {result.get('computation_time', 'N/A'):.6f} s")
 

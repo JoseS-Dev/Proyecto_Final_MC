@@ -5,14 +5,17 @@ import scipy.optimize as opt
 from .base_optimizer import BaseOptimizer
 
 class UnconstrainedOptimizer(BaseOptimizer):
-    """Clase para la optimización sin restricciones"""
-    def solve(self, objective, constraints=None, **kwargs):
+    """Método general para optimización sin restricciones"""
+    
+    def solve(self, objective, constraints=None, initial_point=None, **kwargs):
         """
         Usa scipy.optimize.minimize para optimización sin restricciones
         
         Args:
             objective: Función objetivo
             constraints: Ignorado (método sin restricciones)
+            initial_point: Punto inicial como diccionario
+            **kwargs: Parámetros adicionales
         
         Returns:
             Diccionario con resultados
@@ -20,14 +23,17 @@ class UnconstrainedOptimizer(BaseOptimizer):
         start_time = time.time()
         
         try:
-            obj_expr = self._parser_function(objective)
+            obj_expr = self._parse_function(objective)
             variables = self._get_variables(obj_expr)
             
             # Convertir a función numérica
             obj_func = sp.lambdify(variables, obj_expr, 'numpy')
             
-            # Punto inicial (centro)
-            x0 = np.zeros(len(variables))
+            # Punto inicial
+            if initial_point:
+                x0 = np.array([initial_point.get(var.name, 0.0) for var in variables])
+            else:
+                x0 = np.zeros(len(variables))
             
             # Optimizar usando BFGS
             result = opt.minimize(obj_func, x0, method='BFGS')
@@ -47,4 +53,11 @@ class UnconstrainedOptimizer(BaseOptimizer):
             }
             
         except Exception as e:
-            return {'error': f"Error en optimización sin restricciones: {e}"}
+            return {
+                'optimal_point': 'N/A',
+                'optimal_value': 'N/A',
+                'iterations': 0,
+                'computation_time': time.time() - start_time,
+                'method': 'Unconstrained (BFGS)',
+                'error': f"Error en optimización sin restricciones: {e}"
+            }

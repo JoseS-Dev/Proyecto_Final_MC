@@ -6,18 +6,19 @@ from .base_optimizer import BaseOptimizer
 class GradientDescent(BaseOptimizer):
     """Clase para el método de optimización por descenso de gradiente"""
     
-    def solve(self, objective, constraints=None,initial_point=None,
-              learning_rate=0.01, max_iterations=1000, tolerance=1e-6):
+    def solve(self, objective, constraints=None, initial_point=None,
+              learning_rate=0.01, max_iterations=1000, tolerance=1e-6, **kwargs):
         """
         Resuelve el problema de minimización usando gradiente descendente
         
         Args:
             objective: Función objetivo como string
-            constraints: Lista de restricciones (no usado en este método)
+            constraints: Lista de restricciones (no usado en este método básico)
             initial_point: Punto inicial como diccionario {variable: valor}
             learning_rate: Tasa de aprendizaje
             max_iterations: Máximo número de iteraciones
             tolerance: Tolerancia para convergencia
+            **kwargs: Parámetros adicionales para consistencia
         
         Returns:
             Diccionario con resultados
@@ -25,21 +26,21 @@ class GradientDescent(BaseOptimizer):
         start_time = time.time()
 
         try:
-            # Parsearmos la función objetivo
-            obj_expr = self._parser_function(objective)
+            # Parsear la función objetivo
+            obj_expr = self._parse_function(objective)
             variables = self._get_variables(obj_expr)
 
-            # Convertimos el punto inicial a un array de numpy
+            # Convertir el punto inicial a un array de numpy
             if not initial_point:
                 initial_point = {var.name: 0.0 for var in variables}
             
             x_current = np.array([initial_point.get(var.name, 0.0) for var in variables])
 
-            # Calculamos el gradiente
+            # Calcular el gradiente
             gradient_expr = self._gradient(obj_expr, variables)
             grad_func = sp.lambdify(variables, gradient_expr, "numpy")
 
-            # Hacemos las iteracciones del gradiente descendente
+            # Iteraciones del gradiente descendente
             for iteration in range(max_iterations):
                 # Evaluar gradiente en punto actual
                 grad_val = np.array(grad_func(*x_current))
@@ -69,8 +70,14 @@ class GradientDescent(BaseOptimizer):
             }
             
         except Exception as e:
-            return {'error': f"Error en gradiente descendente: {e}"}
-
+            return {
+                'optimal_point': 'N/A',
+                'optimal_value': 'N/A',
+                'iterations': 0,
+                'computation_time': time.time() - start_time,
+                'method': 'Gradient Descent',
+                'error': f"Error en gradiente descendente: {e}"
+            }
 
 
         

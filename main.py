@@ -8,6 +8,7 @@ def main():
     """Función principal del programa"""
     print("=== Calculadora de Optimización No Lineal ===")
     print("Universidad José Antonio Páez")
+    print("José Angel Santana Ramos C.I: 31.608.829")
     print("Facultad de Ingeniería - Escuela de Ingeniería en Computación")
     print("=" * 50)
     

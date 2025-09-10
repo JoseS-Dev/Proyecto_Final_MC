@@ -6,7 +6,7 @@ class CalculadoraOptimizacion:
     def __init__(self, root):
         self.root = root
         self.root.title("Calculadora de Optimización No Lineal")
-        self.root.geometry("900x700")
+        self.root.geometry("900x500")
         
         # Variables para almacenar entradas
         self.funcion_obj = tk.StringVar()

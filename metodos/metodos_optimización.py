@@ -34,23 +34,40 @@ class MetodosOptimizacion:
     def metodo_derivacion_parcial(variables, func_str):
         # Crear símbolos para las variables
         sym_vars = sp.symbols(variables)
-        
+
         # Convertir la función string a una expresión sympy
         func_expr = sp.sympify(func_str)
-        
+
         # Calcular derivadas parciales
         derivadas = [sp.diff(func_expr, var) for var in sym_vars]
-        
+
         # Resolver el sistema de ecuaciones
         soluciones = sp.solve(derivadas, sym_vars)
-        
+
         # Evaluar la función en los puntos críticos
         puntos_criticos = []
-        for sol in soluciones:
-            punto = {str(var): val for var, val in zip(sym_vars, sol)}
-            valor_funcion = func_expr.subs(punto)
+
+        # MANEJO DE DIFERENTES TIPOS DE SOLUCIONES
+        if isinstance(soluciones, dict):
+            # Si hay una sola solución (devuelve diccionario)
+            punto = {str(var): soluciones[var] for var in sym_vars}
+            valor_funcion = func_expr.subs(soluciones)
             puntos_criticos.append({"punto": punto, "valor": valor_funcion})
-        
+
+        elif isinstance(soluciones, list):
+            # Si hay múltiples soluciones (devuelve lista)
+            for sol in soluciones:
+                if isinstance(sol, dict):
+                    # Solución como diccionario
+                    punto = {str(var): sol[var] for var in sym_vars}
+                    valor_funcion = func_expr.subs(sol)
+                    puntos_criticos.append({"punto": punto, "valor": valor_funcion})
+                else:
+                    # Solución como tupla
+                    punto = {str(var): val for var, val in zip(sym_vars, sol)}
+                    valor_funcion = func_expr.subs(punto)
+                    puntos_criticos.append({"punto": punto, "valor": valor_funcion})
+
         return {
             "Método": "Derivación parcial para varias variables",
             "Función objetivo": func_str,
@@ -61,37 +78,46 @@ class MetodosOptimizacion:
     
     @staticmethod
     def metodo_gradiente_descendente(variables, func_str):
-        if len(variables) != 1:
-            raise ValueError("Este método solo funciona con una variable")
-        
-        # Convertir la función string a una función lambda y su derivada
-        x = sp.symbols(variables[0])
+        # Crear símbolos para las variables
+        sym_vars = sp.symbols(variables)
+
+        # Convertir la función string a una expresión sympy
         func_expr = sp.sympify(func_str)
-        func_lambda = sp.lambdify(x, func_expr, 'numpy')
-        derivada = sp.diff(func_expr, x)
-        derivada_lambda = sp.lambdify(x, derivada, 'numpy')
-        
+        func_lambda = sp.lambdify(sym_vars, func_expr, 'numpy')
+
+        # Calcular gradiente (derivadas parciales)
+        gradiente = [sp.diff(func_expr, var) for var in sym_vars]
+        gradiente_lambda = sp.lambdify(sym_vars, gradiente, 'numpy')
+
         # Parámetros del gradiente descendente
         alpha = 0.1  # Tamaño del paso
-        x_val = 0  # Punto inicial
-        iteraciones = 100
+        x_vals = [0] * len(variables)  # Punto inicial [0, 0, ...]
+        iteraciones = 1000
         tolerancia = 1e-6
-        
+
         # Gradiente descendente
         for i in range(iteraciones):
-            grad = derivada_lambda(x_val)
-            x_val = x_val - alpha * grad
-            if abs(grad) < tolerancia:
+            # Calcular gradiente en el punto actual
+            grad = np.array(gradiente_lambda(*x_vals))
+
+            # Actualizar valores
+            x_vals = x_vals - alpha * grad
+
+            # Verificar criterio de parada
+            if np.linalg.norm(grad) < tolerancia:
                 break
-        
+            
+        # Evaluar función en el punto final
+        valor_funcion = func_lambda(*x_vals)
+
         return {
             "Método": "Gradiente descendente",
             "Función objetivo": func_str,
-            "Variable": variables[0],
-            "Valor óptimo de x": x_val,
-            "Mínimo de la función": func_lambda(x_val),
-            "Iteraciones realizadas": i+1,
-            "Gradiente final": grad
+            "Variables": variables,
+            "Valores óptimos": dict(zip(variables, x_vals)),
+            "Mínimo de la función": valor_funcion,
+            "Iteraciones realizadas": i + 1,
+            "Norma del gradiente final": float(np.linalg.norm(grad))
         }
     
     @staticmethod
@@ -99,11 +125,8 @@ class MetodosOptimizacion:
         if not restr_str:
             raise ValueError("Este método requiere restricciones")
         
-        if len(variables) != 2:
-            raise ValueError("Este método solo funciona con dos variables")
-        
         # Crear símbolos para las variables y multiplicador de Lagrange
-        x, y = sp.symbols(variables)
+        sym_vars = sp.symbols(variables)
         λ = sp.symbols('λ')
         
         # Convertir las funciones string a expresiones sympy
@@ -114,23 +137,31 @@ class MetodosOptimizacion:
         L = func_expr + λ * restr_expr
         
         # Derivar parcialmente
-        L_x = sp.diff(L, x)
-        L_y = sp.diff(L, y)
-        L_λ = sp.diff(L, λ)
+        derivadas = []
+        for var in sym_vars:
+            derivadas.append(sp.diff(L, var))
+        derivadas.append(sp.diff(L, λ))  # Derivada respecto a λ
         
-        # Resolver el sistema de ecuaciones
-        soluciones = sp.solve([L_x, L_y, L_λ], [x, y, λ])
+        # Resolver el sistema de ecuaciones CON dict=True
+        todas_variables = list(sym_vars) + [λ]
+        soluciones = sp.solve(derivadas, todas_variables, dict=True)
         
         # Evaluar la función en las soluciones
         resultados = []
         for sol in soluciones:
-            x_opt, y_opt, λ_opt = sol
-            f_opt = func_expr.subs({x: x_opt, y: y_opt})
+            # Extraer valores de la solución
+            valores = {}
+            for var in sym_vars:
+                valores[var] = sol[var]
+            λ_val = sol[λ]
+            
+            # Evaluar función objetivo
+            f_opt = func_expr.subs(sol)
+            
             resultados.append({
-                "x": x_opt,
-                "y": y_opt,
-                "λ": λ_opt,
-                "f(x,y)": f_opt
+                "variables": {str(var): float(valores[var]) for var in sym_vars},
+                "lambda": float(λ_val),
+                "f(x)": float(f_opt)
             })
         
         return {
@@ -138,6 +169,7 @@ class MetodosOptimizacion:
             "Función objetivo": func_str,
             "Restricción": restr_str,
             "Variables": variables,
+            "Ecuaciones del sistema": [str(d) + " = 0" for d in derivadas],
             "Soluciones": resultados
         }
     
